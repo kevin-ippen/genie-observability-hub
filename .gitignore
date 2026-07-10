@@ -1,0 +1,8 @@
+# Databricks
+.databricks/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# Bundle artifacts
+.bundle/
