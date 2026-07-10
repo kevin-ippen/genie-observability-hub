@@ -56,32 +56,23 @@ resources:
       tags:
         project: genie-observability-hub
 
-    # ─── Daily: harvest conversations + cost ───
-    harvester:
-      name: "[${bundle.target}] Genie Observability — Harvester"
+    # ─── Daily: full pipeline orchestrator (harvest + AI + cost + alerts) ───
+    orchestrator:
+      name: "[${bundle.target}] Genie Observability — Daily Pipeline"
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: UTC
       max_concurrent_runs: 1
       tasks:
-        - task_key: harvest_conversations
+        - task_key: run_pipeline
           notebook_task:
-            notebook_path: src/02_harvester
+            notebook_path: src/00_config
             base_parameters:
-              catalog: ${var.catalog}
-              schema: ${var.schema}
+              target_catalog: ${var.catalog}
+              target_schema: ${var.schema}
+              warehouse_id: ${var.warehouse_id}
               lookback_days: ${var.harvest_lookback_days}
           environment_key: default
-
-        - task_key: cost_attribution
-          depends_on:
-            - task_key: harvest_conversations
-          notebook_task:
-            notebook_path: src/03_cost_attribution
-            base_parameters:
-              catalog: ${var.catalog}
-              schema: ${var.schema}
-            warehouse_id: ${var.warehouse_id}
 
       environments:
         - environment_key: default
@@ -114,31 +105,6 @@ resources:
       tags:
         project: genie-observability-hub
 
-    # ─── Daily (after harvester): alerts + retention + FAQ + SLA ───
-    alerts_and_maintenance:
-      name: "[${bundle.target}] Genie Observability — Alerts & Maintenance"
-      schedule:
-        quartz_cron_expression: "0 0 7 * * ?"
-        timezone_id: UTC
-      tasks:
-        - task_key: run_alerts_retention
-          notebook_task:
-            notebook_path: src/04_alerts_and_retention
-            base_parameters:
-              catalog: ${var.catalog}
-              schema: ${var.schema}
-          environment_key: default
-      environments:
-        - environment_key: default
-          spec:
-            client: "1"
-            dependencies:
-              - databricks-sdk>=0.40.0
-      email_notifications:
-        on_failure:
-          - ${workspace.current_user.userName}
-      tags:
-        project: genie-observability-hub
 
 targets:
   dev:

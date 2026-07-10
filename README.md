@@ -1,6 +1,84 @@
 # Genie Observability Hub
 
-End-to-end observability for Databricks Genie Spaces and Genie One queries. Goes beyond native audit logs by harvesting actual conversation content via the Genie REST API and storing it in governed Delta tables.
+End-to-end observability for Databricks Genie Spaces: user queries, generated SQL, response quality, cost attribution, AI-classified insights, and FAQ detection. Goes beyond native audit logs by harvesting actual conversation content via the Genie REST API.
+
+## What You Get
+
+- **8-page Lakeview Dashboard** — Overview, Space Performance, User Activity, Quality & Reliability, Cost & ROI, Conversations, Space Inventory, AI Insights
+- **Genie Space** — Natural language queries over your observability data (meta-observability!)
+- **Automated Pipeline** — Daily harvest + AI enrichment + cost rollup + alerting
+- **AI Enrichment** — Question classification, entity extraction, FAQ detection, sentiment analysis (all toggleable)
+
+## Quick Start (Deploy Your Own)
+
+### Prerequisites
+- Databricks workspace with Unity Catalog
+- Access to `system.access.audit`, `system.billing.usage`, `system.query.history`
+- At least one Genie Space you want to observe
+- A SQL warehouse
+
+### 1. Clone & Configure
+
+```bash
+git clone https://github.com/kevin-ippen/genie-observability-hub.git
+cd genie-observability-hub
+```
+
+### 2. Deploy the Bundle
+
+```bash
+databricks bundle deploy -t dev \
+  --var catalog=your_catalog \
+  --var warehouse_id=your_warehouse_id
+```
+
+This creates:
+- Bootstrap job (run once — creates schema + Delta tables)
+- Daily orchestrator job (harvest → AI enrichment → cost → alerts)
+- Tracing demo job
+
+### 3. First-Time Setup
+
+```bash
+# Create schema and tables
+databricks bundle run bootstrap -t dev
+
+# Run initial harvest
+databricks bundle run orchestrator -t dev
+```
+
+### 4. Configure Your Spaces
+
+Edit `src/00_config.py` cell 2 — update `SPACE_IDS` with your space IDs:
+
+```python
+SPACE_IDS = [
+    "your-space-id-1",  # Find in URL: /genie/rooms/<space_id>
+    "your-space-id-2",
+]
+```
+
+### 5. Create the Genie Space (Optional)
+
+After harvest, create a Genie Space pointed at:
+- `{catalog}.{schema}.genie_messages`
+- `{catalog}.{schema}.genie_conversations`
+- `{catalog}.{schema}.genie_spaces`
+- `{catalog}.{schema}.genie_cost_attribution`
+
+## Feature Flags
+
+All stages toggleable in `src/00_config.py`:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| ENABLE_HARVEST | True | Genie Conversation API harvest |
+| ENABLE_AI_CLASSIFICATION | True | ai_classify question category/complexity/intent |
+| ENABLE_AI_ENTITY_EXTRACTION | False | ai_extract table names, metrics, time ranges |
+| ENABLE_AI_FAQ_DETECTION | False | ai_similarity clustering for repeated questions |
+| ENABLE_AI_SENTIMENT | False | ai_analyze_sentiment on responses |
+| ENABLE_COST_ATTRIBUTION | True | Per-user billing rollup |
+| ENABLE_ALERTS | False | Failure/cost/latency alerting |
 
 ## Architecture
 
